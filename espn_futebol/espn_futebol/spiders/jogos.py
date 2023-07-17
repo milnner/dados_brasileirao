@@ -4,8 +4,10 @@ import os as os
 
 
 URLS_TIMES_BRASILEIRAO_FILE = "urlsTimesDoBrasileirao.txt"
-filename = "jogos.txt"
 
+
+class Jogo(scrapy.Item):
+    linha = scrapy.Field()
 
 
 class UrlsDosTimes(scrapy.Spider):
@@ -16,24 +18,32 @@ class UrlsDosTimes(scrapy.Spider):
             urls = Path(URLS_TIMES_BRASILEIRAO_FILE).read_text().split("\n")
         except FileNotFoundError:
             print("Arquivo não encontrado")
-        with open(filename, "w", encoding="utf-8") as jogos_file:
-            pass
+            exit(0)
         
         for url in urls:
             yield scrapy.Request(url=url.replace("_/","resultados/_/"),
                                  callback=self.parse)
 
     def parse(self, response):
-        rows = response.xpath("//table//tr | //table//tr")
+        tabelas = response.xpath("//div[@class='ResponsiveTable Table__results']")
 
-        with open(filename, "a", encoding="utf-8") as jogos_file:
-           for row in rows:
-                data = row.xpath(".//td//a/text() | .//td//div/text() |\
-                                  .//td//span/text()").getall()
-                print(data)
+        for tabela in tabelas:
+            rows = tabela.xpath("//table//tr | //table//tr")
+            titulo_da_tabela = tabela.xpath("//div[@class='Table__Title']/text()").get()
+            for row in rows:
+                data = row.xpath("  .//td//a/text() |       \
+                                    .//td//div/text() |     \
+                                    .//td//span/a/text() |  \
+                                    .//td/span[not(@*)]/text()"
+                                ).getall()
                 if len(data) == 0:
                     continue
-                yield ";".join(data) + "\n"
+                # campeonato = row.xpath(".//td").getall()[-1].xpath(".//span/a/text()")
+                # data.append(campeonato
+                            # )
+                data.append(titulo_da_tabela)
+                item = Jogo()
+                item["linha"] = data
+                yield item
                 
-            #    jogos_file.write(";".join(data) + "\n")
 
